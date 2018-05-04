@@ -1,0 +1,68 @@
+<?php
+/**
+ * @file
+ * Auto Unblock User
+ */
+
+/**
+ * Implements hook_form_alter().
+ */
+function auu_form_alter(&$form, &$form_state, $form_id) {
+  switch ($form_id) {
+    case 'user_login':
+    case 'user_login_block':
+    	if(variable_get('auu_option') == TRUE){
+			  // add validate on the beginning of the validation array.
+    		array_unshift($form['#validate'], 'auu_login_validate');
+			}
+      break;
+    case 'login_security_admin_settings':
+    	// Create a field to lets choose to unblock users automatically.
+    	$form['auu_user'] = array(
+		    '#type' => 'checkbox',
+		    '#title' => t('Unblock Users Automatically?'),
+		    '#description' => t('Checking this option, the users were blocked due to wrong attempts will be automatically unblocked when the given hour(s) will be expired.'),
+		    '#default_value' => variable_get('auu_option', FALSE),
+		    '#weight' => -1,
+		  );
+		  // submission of auu setting
+		  array_unshift($form['#submit'], 'auu_system_settings_form_submit');
+		  break;
+  }
+}
+
+/**
+ * Implements auu_system_settings_form_submit()
+ */
+function auu_system_settings_form_submit($form, &$form_state){
+	// Rebuild the form
+	$form_state['rebuild'] = TRUE;
+	// Save auu_option variable
+	variable_set('auu_option', $form_state['values']['auu_user']);
+}
+
+/**
+ * Implements auu_login_validation().
+ */
+function auu_login_validate($form, &$form_state){
+	$name = $form_state['values']['name'];
+	// Login Security uses a variable (@user_current_count) to count the wrong attemps 
+	$variables = _login_security_get_variables_by_name($name);
+
+	// Using "@user_current_count" variable, current user can be judged that he/she is blocked.
+	if($variables['@user_current_count'] == 3){
+		// The last time user attempted wrong attemp
+	  $block_time = db_select('login_security_track', 'time')->fields('time', array('timestamp'))->condition('name', $name)->orderBy('timestamp','DESC')->execute()->fetchField();
+	  // Set unblock time, security login uses "login_security_track_time" variable
+	  // to save the tracking time on "/admin/config/people/login_security"
+	  $unblock_time = strtotime('+'.variable_get('login_security_track_time').' hour', $block_time);
+	  // Unblock user while validating login form 
+	  if($unblock_time <= REQUEST_TIME){
+			$account = user_load($variables['@uid']);
+			user_save($account, array('status'=> 1));
+			// Set log message for administrator
+			watchdog('auu', t('Username %name with user ID %uid has been auto unblocked.'), array('%name' => $name, '%uid' => $variables['@uid']));
+			drupal_set_message(t('Congratulations '.$name.', You have been activated autmatically.'), 'status', FALSE);
+		}
+	}
+}

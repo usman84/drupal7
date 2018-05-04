@@ -1,0 +1,3 @@
+name = User Login Counter
+description = To store the information about user login
+core = 7.x

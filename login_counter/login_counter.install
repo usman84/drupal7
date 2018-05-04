@@ -1,0 +1,19 @@
+<?php
+
+/**
+ * @file
+ * Auto Unblock Users installation routines.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function login_counter_install() {
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function login_counter_uninstall() {
+  //variable_del('auu_option');
+}

@@ -1,0 +1,5 @@
+name = Delete Aliases
+description = It'll give option(s) to delete bulk aliases for specific entity type (Content Type, Taxonomy etc.)
+core = 7.x
+
+dependencies[] = pathauto
